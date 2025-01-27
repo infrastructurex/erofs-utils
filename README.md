@@ -1,4 +1,4 @@
-# ero
+# erofs-utils
 erofs-utils build
 
 ## License
