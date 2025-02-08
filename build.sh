@@ -15,5 +15,5 @@ echo Building erofs-utils ...
 cd /build/erofs-utils || exit
 
 autoreconf -fiv
-./configure
+./configure --enable-multithreading
 make "-j$(nproc)" || exit
