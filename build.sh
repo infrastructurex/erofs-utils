@@ -15,5 +15,5 @@ echo Building erofs-utils ...
 cd /build/erofs-utils || exit
 
 autoreconf -fiv
-./configure --enable-multithreading
+./configure # --enable-multithreading not yet compatible with dedupe
 make "-j$(nproc)" || exit
