@@ -15,5 +15,5 @@ echo Building erofs-utils ...
 cd /build/erofs-utils || exit
 
 autoreconf -fiv
-./configure CFLAGS="-D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64" # --enable-multithreading not yet compatible with dedupe
+./configure CFLAGS="-D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64" --enable-multithreading
 make "-j$(nproc)" || exit
