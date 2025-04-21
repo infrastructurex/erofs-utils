@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-VERSION=1.8.5
+VERSION=1.8.6
 SOURCE=https://git.kernel.org/pub/scm/linux/kernel/git/xiang/erofs-utils.git/snapshot/erofs-utils-$VERSION.tar.gz
 
 echo Downloading erofs-utils "$VERSION" ...
@@ -15,5 +15,5 @@ echo Building erofs-utils ...
 cd /build/erofs-utils || exit
 
 autoreconf -fiv
-./configure # --enable-multithreading not yet compatible with dedupe
+./configure CFLAGS="-D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64" # --enable-multithreading not yet compatible with dedupe
 make "-j$(nproc)" || exit
