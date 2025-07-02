@@ -1,4 +1,4 @@
-FROM alpine:3.21.3 AS build
+FROM alpine:3.22.0 AS build
 
 ARG ARCH
 ENV ARCH=$ARCH
@@ -10,7 +10,7 @@ ADD build.sh /build/build.sh
 RUN /build/build.sh
 
 
-FROM alpine:3.21.3 AS export
+FROM alpine:3.22.0 AS export
 RUN apk add libuuid lz4-libs zlib zstd-libs
 COPY --from=build /build/erofs-utils/mkfs/mkfs.erofs /usr/bin
 ENTRYPOINT ["/usr/bin/mkfs.erofs"]

@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 
-VERSION=1.8.6
+VERSION=1.8.9
 SOURCE=https://git.kernel.org/pub/scm/linux/kernel/git/xiang/erofs-utils.git/snapshot/erofs-utils-$VERSION.tar.gz
 
 echo Downloading erofs-utils "$VERSION" ...
