@@ -1,0 +1,49 @@
+diff --git a/mkfs/main.c b/mkfs/main.c
+index c86bb8cb..e725eb2b 100644
+--- a/mkfs/main.c
++++ b/mkfs/main.c
+@@ -1268,6 +1268,31 @@ static void erofs_mkfs_showsummaries(void)
+ 		incr, g_sbi.saved_by_deduplication | 0ULL);
+ }
+
++#if defined(HAVE_EXECINFO_H) && defined(HAVE_BACKTRACE)
++#include <execinfo.h>
++#include <signal.h>
++
++static void signal_handle_sigsegv(int signal)
++{
++	void *array[10];
++	size_t nptrs;
++	char **strings;
++	size_t i;
++
++	erofs_dump("========================================\n");
++	erofs_dump("Segmentation Fault.  Starting backtrace:\n");
++	nptrs = backtrace(array, 10);
++	strings = backtrace_symbols(array, nptrs);
++	if (strings) {
++		for (i = 0; i < nptrs; i++)
++			erofs_dump("%s\n", strings[i]);
++		free(strings);
++	}
++	erofs_dump("========================================\n");
++	abort();
++}
++#endif
++
+ int main(int argc, char **argv)
+ {
+ 	struct erofs_buffer_head *sb_bh;
+@@ -1279,6 +1304,13 @@ int main(int argc, char **argv)
+ 	int err = 0;
+ 	u32 crc;
+
++#if defined(HAVE_EXECINFO_H) && defined(HAVE_BACKTRACE)
++	if (signal(SIGSEGV, signal_handle_sigsegv) == SIG_ERR) {
++		fprintf(stderr, "failed to initialize signals\n");
++		return -errno;
++	}
++#endif
++
+ 	erofs_init_configure();
+ 	erofs_mkfs_default_options();
