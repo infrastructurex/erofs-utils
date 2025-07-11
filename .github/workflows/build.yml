@@ -5,6 +5,7 @@ on:
       - '.github/workflows/build.yml'
       - 'build.sh'
       - 'Dockerfile'
+      - 'erofs.patch'
 
 jobs:
   build-docker-image:
