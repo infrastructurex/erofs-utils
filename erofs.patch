@@ -1,49 +1,125 @@
-diff --git a/mkfs/main.c b/mkfs/main.c
-index c86bb8cb..e725eb2b 100644
---- a/mkfs/main.c
-+++ b/mkfs/main.c
-@@ -1268,6 +1268,31 @@ static void erofs_mkfs_showsummaries(void)
- 		incr, g_sbi.saved_by_deduplication | 0ULL);
+diff --git a/include/erofs/dedupe.h b/include/erofs/dedupe.h
+index ffb00a50..f9caa611 100644
+--- a/include/erofs/dedupe.h
++++ b/include/erofs/dedupe.h
+@@ -34,7 +34,7 @@ void z_erofs_dedupe_exit(void);
+
+ int z_erofs_dedupe_ext_insert(struct z_erofs_inmem_extent *e,
+ 			      u64 hash);
+-erofs_blk_t z_erofs_dedupe_ext_match(struct erofs_sb_info *sbi,
++erofs_off_t z_erofs_dedupe_ext_match(struct erofs_sb_info *sbi,
+ 			u8 *encoded, unsigned int size, bool raw, u64 *hash);
+ void z_erofs_dedupe_ext_commit(bool drop);
+ int z_erofs_dedupe_ext_init(void);
+diff --git a/lib/compress.c b/lib/compress.c
+index 6f65993c..b16f5d1d 100644
+--- a/lib/compress.c
++++ b/lib/compress.c
+@@ -403,7 +403,7 @@ static int write_uncompressed_block(struct z_erofs_compress_sctx *ctx,
+ 	memcpy(dst, ctx->queue + ctx->head + rightpart, count - rightpart);
+
+ 	if (ctx->membuf) {
+-		erofs_dbg("Writing %u uncompressed data of %s", count,
++		erofs_dbg("Recording %u uncompressed data of %s", count,
+ 			  inode->i_srcpath);
+ 		memcpy(ctx->membuf + ctx->memoff, dst, erofs_blksiz(sbi));
+ 		ctx->memoff += erofs_blksiz(sbi);
+@@ -705,7 +705,7 @@ frag_packing:
+
+ 		/* write compressed data */
+ 		if (ctx->membuf) {
+-			erofs_dbg("Writing %u compressed data of %u bytes of %s",
++			erofs_dbg("Recording %u compressed data of %u bytes of %s",
+ 				  e->length, e->plen, inode->i_srcpath);
+
+ 			memcpy(ctx->membuf + ctx->memoff,
+@@ -1207,6 +1207,7 @@ int erofs_commit_compressed_file(struct z_erofs_compress_ictx *ictx,
+ 	/* estimate if data compression saves space or not */
+ 	if (!inode->fragment_size && ptotal + inode->idata_size +
+ 	    legacymetasize >= inode->i_size) {
++		z_erofs_dedupe_ext_commit(true);
+ 		z_erofs_dedupe_commit(true);
+ 		ret = -ENOSPC;
+ 		goto err_free_meta;
+@@ -1411,7 +1412,7 @@ int z_erofs_merge_segment(struct z_erofs_compress_ictx *ictx,
+ 	bool dedupe_ext = cfg.c_fragments;
+ 	erofs_off_t off = 0;
+ 	int ret = 0, ret2;
+-	erofs_blk_t dupb;
++	erofs_off_t dpo;
+ 	u64 hash;
+
+ 	list_for_each_entry_safe(ei, n, &sctx->extents, list) {
+@@ -1429,10 +1430,10 @@ int z_erofs_merge_segment(struct z_erofs_compress_ictx *ictx,
+ 			continue;
+
+ 		if (dedupe_ext) {
+-			dupb = z_erofs_dedupe_ext_match(sbi, sctx->membuf + off,
++			dpo = z_erofs_dedupe_ext_match(sbi, sctx->membuf + off,
+ 						ei->e.plen, ei->e.raw, &hash);
+-			if (dupb != EROFS_NULL_ADDR) {
+-				ei->e.pstart = dupb;
++			if (dpo) {
++				ei->e.pstart = dpo;
+ 				sctx->pstart -= ei->e.plen;
+ 				off += ei->e.plen;
+ 				ictx->dedupe = true;
+@@ -1444,6 +1445,8 @@ int z_erofs_merge_segment(struct z_erofs_compress_ictx *ictx,
+ 				continue;
+ 			}
+ 		}
++		erofs_dbg("Writing %u %scompressed data of %s to %llu", ei->e.length,
++			  ei->e.raw ? "un" : "", ictx->inode->i_srcpath, ei->e.pstart);
+ 		ret2 = erofs_dev_write(sbi, sctx->membuf + off, ei->e.pstart,
+ 				       ei->e.plen);
+ 		off += ei->e.plen;
+diff --git a/lib/dedupe_ext.c b/lib/dedupe_ext.c
+index c2c5ca94..d7a9b737 100644
+--- a/lib/dedupe_ext.c
++++ b/lib/dedupe_ext.c
+@@ -32,14 +32,14 @@ int z_erofs_dedupe_ext_insert(struct z_erofs_inmem_extent *e,
+ 	return 0;
  }
 
-+#if defined(HAVE_EXECINFO_H) && defined(HAVE_BACKTRACE)
-+#include <execinfo.h>
-+#include <signal.h>
-+
-+static void signal_handle_sigsegv(int signal)
-+{
-+	void *array[10];
-+	size_t nptrs;
-+	char **strings;
-+	size_t i;
-+
-+	erofs_dump("========================================\n");
-+	erofs_dump("Segmentation Fault.  Starting backtrace:\n");
-+	nptrs = backtrace(array, 10);
-+	strings = backtrace_symbols(array, nptrs);
-+	if (strings) {
-+		for (i = 0; i < nptrs; i++)
-+			erofs_dump("%s\n", strings[i]);
-+		free(strings);
-+	}
-+	erofs_dump("========================================\n");
-+	abort();
-+}
-+#endif
-+
- int main(int argc, char **argv)
+-erofs_blk_t z_erofs_dedupe_ext_match(struct erofs_sb_info *sbi,
++erofs_off_t z_erofs_dedupe_ext_match(struct erofs_sb_info *sbi,
+ 				     u8 *encoded, unsigned int len,
+ 				     bool raw, u64 *hash)
  {
- 	struct erofs_buffer_head *sb_bh;
-@@ -1279,6 +1304,13 @@ int main(int argc, char **argv)
- 	int err = 0;
- 	u32 crc;
+ 	struct z_erofs_dedupe_ext_item *item;
+ 	struct list_head *p;
+ 	u64 _xxh64;
+-	char *memb;
++	char *memb = NULL;
+ 	int ret;
 
-+#if defined(HAVE_EXECINFO_H) && defined(HAVE_BACKTRACE)
-+	if (signal(SIGSEGV, signal_handle_sigsegv) == SIG_ERR) {
-+		fprintf(stderr, "failed to initialize signals\n");
-+		return -errno;
-+	}
-+#endif
-+
- 	erofs_init_configure();
- 	erofs_mkfs_default_options();
+ 	*hash = _xxh64 = xxh64(encoded, len, 0);
+@@ -47,19 +47,20 @@ erofs_blk_t z_erofs_dedupe_ext_match(struct erofs_sb_info *sbi,
+ 	list_for_each_entry(item, p, list) {
+ 		if (item->xxh64 == _xxh64 && item->e.plen == len &&
+ 		    item->e.raw == raw) {
+-			memb = malloc(len);
+-			if (!memb)
+-				break;
+-			ret = erofs_dev_read(sbi, 0, memb, item->e.pstart, len);
+-			if (ret < 0 || memcmp(memb, encoded, len)) {
+-				free(memb);
+-				break;
++			if (!memb) {
++				memb = malloc(len);
++				if (!memb)
++					break;
+ 			}
++			ret = erofs_dev_read(sbi, 0, memb, item->e.pstart, len);
++			if (ret < 0 || memcmp(memb, encoded, len))
++				continue;
+ 			free(memb);
+ 			return item->e.pstart;
+ 		}
+ 	}
+-	return EROFS_NULL_ADDR;
++	free(memb);
++	return 0;
+ }
+
+ void z_erofs_dedupe_ext_commit(bool drop)
