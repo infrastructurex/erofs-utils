@@ -35,4 +35,4 @@ jobs:
           push: true
           tags: |
             ghcr.io/infrastructurex/erofs-utils:latest
-            ghcr.io/infrastructurex/erofs-utils:1.8.9-patched
+            ghcr.io/infrastructurex/erofs-utils:1.8.10

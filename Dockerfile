@@ -7,7 +7,7 @@ ENV TAG=$TAG
 
 RUN apk add wget bash gcc musl-dev linux-headers make automake autoconf zstd libtool lz4-dev util-linux-dev zlib-dev zstd-dev upx patch
 ADD build.sh /build/build.sh
-ADD erofs.patch /build/erofs.patch
+#ADD erofs.patch /build/erofs.patch
 RUN /build/build.sh
 
 
