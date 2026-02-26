@@ -2,7 +2,7 @@
 erofs-utils build
 
 ## License
-Copyright 2025 InfrastructureX GmbH
+Copyright 2026 InfrastructureX GmbH
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
