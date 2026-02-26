@@ -11,7 +11,7 @@ jobs:
   build-docker-image:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -35,4 +35,4 @@ jobs:
           push: true
           tags: |
             ghcr.io/infrastructurex/erofs-utils:latest
-            ghcr.io/infrastructurex/erofs-utils:1.8.10
+            ghcr.io/infrastructurex/erofs-utils:1.9
